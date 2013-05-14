@@ -1,0 +1,63 @@
+#!/usr/bin/python
+
+# prompt for non-dry-run, or have option to have per-repo confirmation
+
+from datetime import date, datetime, time, timedelta
+from subprocess import call
+import os
+import re
+import pysvn
+import sys
+
+root = "" # The directory to run the summary on	
+
+def get_login( realm, username, may_save ):
+    return 1, 'ryan', 'fdsfds', 0
+
+
+# If no path is provided, use the current working directory
+if len(sys.argv) == 1 :
+  root = os.getcwd()
+elif len (sys.argv) == 2 and os.path.isdir( sys.argv[1]) :
+  root = sys.argv[1]
+else:
+  print "Usage: dirage [DIRECTORY]"
+  print "  Please make sure the DIRECTORY is a valid, readable path if present."
+  sys.exit()
+
+print "Contents of "+root
+
+for directory in os.listdir(root) :
+  #print " >  ", directory
+  repodir = os.path.join(root,directory)  
+
+  mtime = datetime.fromtimestamp(0) 
+  for walkroot, irs, files in os.walk( repodir) :
+    if not re.search(".svn",walkroot) : 
+      for singlefile in files :
+        singleFileMTime = datetime.fromtimestamp( os.stat( os.path.join(walkroot,singlefile) ).st_mtime )
+        if singleFileMTime > mtime:
+          mtime = singleFileMTime
+  # print mtime
+
+  # Calculate the cutoff
+  cutoffdate = datetime.combine(date.today(), time(00,00)) + timedelta(days=-90)
+  
+  if cutoffdate > mtime :
+    # Any modified, added or untracked changes?
+    # prompt to delete Y/n
+    print "Found a candidate for removal: ", directory, ", last used: ",mtime.date()
+    
+    client = pysvn.Client()
+    client.callback_get_login = get_login
+    status_list = client.status(repodir)
+   
+    # for status in status_list
+	# Check for modified files
+
+  else :
+    print "Not a candidate: ", directory
+    client = pysvn.Client()
+    client.callback_get_login = get_login
+    # client.update(repodir)
+
